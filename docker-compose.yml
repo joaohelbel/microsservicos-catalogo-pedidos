@@ -1,0 +1,53 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: catalog
+      POSTGRES_PASSWORD: catalog
+      POSTGRES_DB: catalog_db
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  catalog-service:
+    build: ./catalog-service
+    environment:
+      DATABASE_URL: postgresql://catalog:catalog@postgres:5432/catalog_db
+    depends_on:
+      - postgres
+    ports:
+      - "8000:8000"
+
+  order-service:
+    build: ./order-service
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      QUEUE_NAME: orders
+    depends_on:
+      - redis
+    ports:
+      - "8000:8000"
+
+  worker-service:
+    build: ./worker-service
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      QUEUE_NAME: orders
+    depends_on:
+      - redis
+    ports:
+      - "9100:9100"
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      - catalog-service
+      - order-service
+    ports:
+      - "3001:80"
